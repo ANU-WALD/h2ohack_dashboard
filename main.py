@@ -2,9 +2,6 @@ import math
 import os
 import urllib.request
 import json
-import numpy as np
-import pandas as pd
-import geopandas as gpd
 
 import dash
 import dash_leaflet as dl
@@ -15,7 +12,6 @@ import dash_auth
 from dash_extensions.javascript import arrow_function
 from dash.dependencies import Input, Output
 from dash.exceptions import PreventUpdate
-
 import plotly.express as px
 
 geojson_url = 'https://gist.githubusercontent.com/prl900/fd34fe289916851a80daa4b19f5a4c11/raw/c84503815aa5fd72caa9ed877bb0b42434049272/boundary.geojson'
