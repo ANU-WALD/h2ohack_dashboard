@@ -14,7 +14,7 @@ from dash.dependencies import Input, Output
 from dash.exceptions import PreventUpdate
 import plotly.express as px
 
-geojson_url = 'https://gist.githubusercontent.com/prl900/fd34fe289916851a80daa4b19f5a4c11/raw/c84503815aa5fd72caa9ed877bb0b42434049272/boundary.geojson'
+geojson_url = 'https://gist.githubusercontent.com/prl900/d385b83aac5421f05edc88b14a5b7e80/raw/28ec913833827a9f58e9251717b7eac43aeb7e29/catchments.geojson'
 
 with urllib.request.urlopen(geojson_url) as url:
     data = json.loads(url.read().decode())
@@ -43,7 +43,7 @@ flood = dl.WMSTileLayer(id= 'flood-wms', url="https://h2ohack-mtmenipwta-ts.a.ru
 
 app.layout = dbc.Container([
     dbc.Row([
-            dbc.Col(html.H1('WALD H2OHack - Interactive Dashboard', style={'marginTop': 35}), width=10),
+            dbc.Col(html.H1('WALD H2OHack - Interactive Dashboard 2', style={'marginTop': 35}), width=10),
             dbc.Col(html.Div(html.Img(src=app.get_asset_url('floodplain.png'), style={'height':'100%','width':'100%', 'marginTop': 10})), width=2)
         ]),
     dbc.Row([
