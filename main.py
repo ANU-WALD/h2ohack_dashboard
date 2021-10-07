@@ -3,6 +3,7 @@ import os
 from urllib import request
 import json
 import pandas as pd
+import numpy as np
 
 import dash
 import dash_leaflet as dl
@@ -52,6 +53,7 @@ flood = dl.WMSTileLayer(id= 'flood-wms', url="https://h2ohack-mtmenipwta-ts.a.ru
 
 ### Sample figure for the hypsometric
 z_data = pd.read_csv('https://raw.githubusercontent.com/plotly/datasets/master/api_docs/mt_bruno_elevation.csv')
+print(z_data.values.shape)
 fig = go.Figure(data=[go.Surface(z=z_data.values)])
 fig.update_layout(title='Mt Bruno Elevation', autosize=False,
                   width=500, height=500,
@@ -129,6 +131,37 @@ def water_request(geojson, threshold):
         return f"Area: {df.iloc[0,1]/10000:.2f} ha | Volume: {df.iloc[0,0]/1000:.2f} ML"
 
     return ""
+
+
+# This displays flooded area and volume in the map's info panel
+@app.callback(Output("graph", "figure"), Input("edit_control", "geojson"), Input("sld_height", "value"))
+def water_request(geojson, threshold):
+    
+    if geojson is None:
+        raise PreventUpdate
+
+    if len(geojson['features']) != 1:
+        raise PreventUpdate
+    
+    if geojson['features'][0]['geometry']['type'] != 'LineString':
+        raise PreventUpdate
+    
+    data = json.dumps({"product": "ELVIS_UTM", "feature": geojson['features'][0]})
+    req =  request.Request("https://h2ohack-mtmenipwta-ts.a.run.app/wcs", data=data.encode())
+    req.add_header('Content-Type', 'application/json; charset=utf-8')
+    resp = request.urlopen(req)
+
+    terrain = np.fromstring(resp.read().decode().rstrip().strip('[]'), sep=',')
+    terrain = np.tile(terrain, (terrain.shape[0], 1))
+
+    water_level = np.ones(terrain.shape)*threshold
+
+    fig = go.Figure(data=[go.Surface(z=terrain), go.Surface(z=water_level)])
+    fig.update_layout(title='Cross-section', autosize=False,
+                  width=500, height=500,
+                  margin=dict(l=65, r=50, b=65, t=90))
+    
+    return fig
 
 
 if __name__ == '__main__':
