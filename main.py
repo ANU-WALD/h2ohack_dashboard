@@ -4,6 +4,7 @@ from urllib import request
 import json
 import pandas as pd
 import numpy as np
+from io import BytesIO
 
 import dash
 import dash_leaflet as dl
@@ -48,16 +49,18 @@ app = dash.Dash(external_stylesheets=[dbc.themes.YETI])
 
 # Terrain layer disabled (using satellite baselayer instead)
 #dem = dl.WMSTileLayer(id= 'dem-wms', url="https://h2ohack-mtmenipwta-ts.a.run.app/wms", layers="ELVIS_UTM", format="image/png", extraProps=dict(time="2021-01-01T00:00:00.000Z"), transparent=True)
-flood = dl.WMSTileLayer(id= 'flood-wms', url="https://h2ohack-mtmenipwta-ts.a.run.app/wms", layers="Flood", format="image/png", extraProps=dict(time="2021-01-01T00:00:00.000Z", threshold=100), transparent=True)
+#flood = dl.WMSTileLayer(id= 'flood-wms', url="https://h2ohack-mtmenipwta-ts.a.run.app/wms", layers="Flood", format="image/png", extraProps=dict(time="2021-01-01T00:00:00.000Z", threshold=100), transparent=True)
+flood = dl.WMSTileLayer(id= 'flood-wms', url="https://h2ohack-mtmenipwta-ts.a.run.app/wms", layers="FloodViridis", format="image/png", extraProps=dict(time="2021-01-01T00:00:00.000Z", threshold=100), transparent=True)
 
 
+"""
 ### Sample figure for the hypsometric
 z_data = pd.read_csv('https://raw.githubusercontent.com/plotly/datasets/master/api_docs/mt_bruno_elevation.csv')
-print(z_data.values.shape)
 fig = go.Figure(data=[go.Surface(z=z_data.values)])
 fig.update_layout(title='Mt Bruno Elevation', autosize=False,
                   width=500, height=500,
                   margin=dict(l=65, r=50, b=65, t=90))
+"""
 
 
 app.layout = dbc.Container([
@@ -73,7 +76,7 @@ app.layout = dbc.Container([
                 ]), 
                 flood, 
                 info
-            ], center=[-30.0,146.3], zoom=10), width=8, className='mt-1', style={'width': '100%', 'height': '60vh', 'margin': "auto", "display": "block", "position": "relative"}),
+            ], center=[-30.0,146.4], zoom=10), width=8, className='mt-1', style={'width': '100%', 'height': '60vh', 'margin': "auto", "display": "block", "position": "relative"}),
             dbc.Col([
                 html.Div([
                     dbc.Label("Inundation Level"),
@@ -89,7 +92,11 @@ app.layout = dbc.Container([
                 ]), 
                 html.Div([
                     dbc.Label("Temporal evolution"),
-                    dcc.Graph(id="graph", figure=fig),
+                    dcc.Graph(id="time-graph", figure=go.Figure()),
+                ]),
+                html.Div([
+                    dbc.Label("3D Plot"),
+                    dcc.Graph(id="3d-graph", figure=go.Figure()),
                 ])
             ], width=4, className='mt-1', style={'width': '100%', 'height': '50vh', 'margin': "auto", "display": "block", "position": "relative"})
         ]),
@@ -134,19 +141,49 @@ def water_request(geojson, threshold):
 
 
 # This displays flooded area and volume in the map's info panel
-@app.callback(Output("graph", "figure"), Input("edit_control", "geojson"), Input("sld_height", "value"))
+@app.callback(Output("3d-graph", "figure"), Input("edit_control", "geojson"), Input("sld_height", "value"))
+def terrain_3d(geojson, threshold):
+    
+    if geojson is None:
+        raise PreventUpdate
+
+    if len(geojson['features']) == 0:
+        raise PreventUpdate
+   
+    if geojson['features'][0]['geometry']['type'] != 'Polygon':
+        raise PreventUpdate
+    
+    data = json.dumps({"product": "ELVIS_UTM", "feature": geojson['features'][0]})
+    req =  request.Request("https://h2ohack-mtmenipwta-ts.a.run.app/wcs", data=data.encode())
+    req.add_header('Content-Type', 'application/json; charset=utf-8')
+    resp = request.urlopen(req)
+
+    terrain = np.load(BytesIO(resp.read()))
+    terrain[terrain==-9999] = np.nan
+    water_level = np.ones(terrain.shape)*threshold
+
+    fig = go.Figure(data=[go.Surface(z=terrain), go.Surface(z=water_level)])
+    fig.update_layout(title='3D Model', autosize=False,
+                  width=500, height=500,
+                  margin=dict(l=65, r=50, b=65, t=90))
+    
+    return fig
+
+
+# This displays flooded area and volume in the map's info panel
+@app.callback(Output("time-graph", "figure"), Input("edit_control", "geojson"), Input("sld_height", "value"))
 def water_request(geojson, threshold):
     
     if geojson is None:
         raise PreventUpdate
 
-    if len(geojson['features']) != 1:
+    if len(geojson['features']) == 0:
+        raise PreventUpdate
+   
+    if geojson['features'][-1]['geometry']['type'] != 'LineString':
         raise PreventUpdate
     
-    if geojson['features'][0]['geometry']['type'] != 'LineString':
-        raise PreventUpdate
-    
-    data = json.dumps({"product": "ELVIS_UTM", "feature": geojson['features'][0]})
+    data = json.dumps({"product": "ELVIS_UTM", "feature": geojson['features'][-1]})
     req =  request.Request("https://h2ohack-mtmenipwta-ts.a.run.app/wcs", data=data.encode())
     req.add_header('Content-Type', 'application/json; charset=utf-8')
     resp = request.urlopen(req)
