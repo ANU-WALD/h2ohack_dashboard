@@ -8,6 +8,7 @@ from io import BytesIO
 
 import dash
 import dash_leaflet as dl
+import dash_table
 import dash_bootstrap_components as dbc
 import dash_html_components as html
 import dash_core_components as dcc
@@ -20,6 +21,33 @@ import plotly.graph_objects as go
 
 # Sat baselayer
 hires_url = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+
+grace_drought_data = "https://gist.githubusercontent.com/prl900/32055725184581317308cd5e1af8e8eb/raw/88381eb60fb06ee5d5beb5620e0f4c930302eee6/GRACE_drought_index.csv"
+
+df = pd.read_csv(grace_drought_data, index_col=1, parse_dates=True)
+drought_fig = px.line(df, y="Drought_Index_Value")
+drought_fig.update_layout(margin=dict(t=5,r=5,l=5,b=5))
+drought_fig.add_hrect(y0=-2.6, y1=-1.5, line_width=0, fillcolor="red", opacity=0.3)
+drought_fig.add_hrect(y0=-1.5, y1=0, line_width=0, fillcolor="orange", opacity=0.3)
+drought_fig.add_hrect(y0=0, y1=1.5, line_width=0, fillcolor="lightgreen", opacity=0.3)
+drought_fig.add_hrect(y0=1.5, y1=3.2, line_width=0, fillcolor="green", opacity=0.3)
+
+cross_fig = go.Figure(data=[go.Surface(z=np.ones((400,400)), colorscale='Viridis')])
+cross_fig.update_layout(autosize=False, width=300, height=300, margin=dict(l=5, r=5, b=5, t=5))
+cross_fig.update_traces(showscale=False)
+
+terrain_fig = go.Figure(data=[go.Surface(z=np.ones((400,400)))])
+terrain_fig.update_layout(autosize=False, width=300, height=300, margin=dict(l=5, r=5, b=5, t=5))
+terrain_fig.update_traces(showscale=False)
+
+table = dash_table.DataTable(
+    id='table',
+    columns=[{"name": i, "id": i} for i in df.columns],
+    data=df.to_dict('records'),
+    page_action="native",
+    page_current= 0,
+    page_size= 10,
+)
 
 # Subcatchment polygons disabled
 """
@@ -44,7 +72,7 @@ def get_info(feature=None):
 info = html.Div(children=get_info(), id="info", className="info",
                 style={"position": "absolute", "top": "10px", "right": "10px", "z-index": "1000"})
 
-app = dash.Dash(external_stylesheets=[dbc.themes.YETI])
+app = dash.Dash(external_stylesheets=[dbc.themes.FLATLY])
 
 
 # Terrain layer disabled (using satellite baselayer instead)
@@ -53,54 +81,65 @@ app = dash.Dash(external_stylesheets=[dbc.themes.YETI])
 flood = dl.WMSTileLayer(id= 'flood-wms', url="https://h2ohack-mtmenipwta-ts.a.run.app/wms", layers="FloodViridis", format="image/png", extraProps=dict(time="2021-01-01T00:00:00.000Z", threshold=100), transparent=True)
 
 
-"""
-### Sample figure for the hypsometric
-z_data = pd.read_csv('https://raw.githubusercontent.com/plotly/datasets/master/api_docs/mt_bruno_elevation.csv')
-fig = go.Figure(data=[go.Surface(z=z_data.values)])
-fig.update_layout(title='Mt Bruno Elevation', autosize=False,
-                  width=500, height=500,
-                  margin=dict(l=65, r=50, b=65, t=90))
-"""
-
-
 app.layout = dbc.Container([
     dbc.Row([
-            dbc.Col(html.H1('WALD H2OHack - Interactive Dashboard 2', style={'marginTop': 35}), width=10),
-            dbc.Col(html.Div(html.Img(src=app.get_asset_url('floodplain.png'), style={'height':'100%','width':'100%', 'marginTop': 10})), width=2)
-        ]),
+        dbc.Col(html.H1('OzRiver H2OHack - Interactive Water Trading Dashboard', style={'marginTop': 35}), width=11),
+        dbc.Col(html.Div(html.Img(src=app.get_asset_url('floodplain.png'), style={'height':'100%','width':'100%', 'marginTop': 10})), width=1)
+    ]),
     dbc.Row([
-            dbc.Col(dl.Map(children=[
-                dl.TileLayer(url=hires_url), 
-                dl.FeatureGroup([
-                    dl.EditControl(id="edit_control", draw=dict(circle=False, circlemarker=False))
-                ]), 
-                flood, 
-                info
-            ], center=[-30.0,146.4], zoom=10), width=8, className='mt-1', style={'width': '100%', 'height': '60vh', 'margin': "auto", "display": "block", "position": "relative"}),
-            dbc.Col([
-                html.Div([
-                    dbc.Label("Inundation Level"),
-                    dcc.Slider(id="sld_height", min=100, max=120, value=100, marks={
-                            100: {'label': '100'},
-                            100: {'label': '105'},
-                            110: {'label': '110'},
-                            110: {'label': '115'},
-                            120: {'label': '120'}
-                        },
-                        included=False
-                    ),
-                ]), 
-                html.Div([
-                    dbc.Label("Temporal evolution"),
-                    dcc.Graph(id="time-graph", figure=go.Figure()),
-                ]),
-                html.Div([
-                    dbc.Label("3D Plot"),
-                    dcc.Graph(id="3d-graph", figure=go.Figure()),
-                ])
-            ], width=4, className='mt-1', style={'width': '100%', 'height': '50vh', 'margin': "auto", "display": "block", "position": "relative"})
-        ]),
-    ], fluid=True)
+        dbc.Col([
+            dbc.Label("Drought Period"),
+            dcc.Slider(id="sld_drought", min=1960, max=2021, value=2020, marks={
+                    1960: {'label': '1960'},
+                    1970: {'label': '1970'},
+                    1980: {'label': '1980'},
+                    1990: {'label': '1990'},
+                    2000: {'label': '2000'},
+                    2010: {'label': '2010'},
+                    2020: {'label': '2020'},
+                },
+                included=False
+            ),
+            dbc.Label("Historical Drought"),
+            dcc.Graph(id="drought-fig", figure=drought_fig, style={'height': '35vh'}, config={'displayModeBar': False}),
+            dbc.Label("Inundation Level"),
+            dcc.Slider(id="sld_height", min=100, max=120, value=100, marks={
+                                100: {'label': '100'},
+                                100: {'label': '105'},
+                                110: {'label': '110'},
+                                110: {'label': '115'},
+                                120: {'label': '120'}}, included=False),
+        ], width=4),
+        dbc.Col([
+            dl.Map(children=[
+                    dl.TileLayer(url=hires_url), 
+                    dl.FeatureGroup([
+                        dl.EditControl(id="edit_control", draw=dict(circle=False, circlemarker=False))
+                    ]), 
+                    flood, 
+                    info
+            ], center=[-30.0,146.4], zoom=10),
+        ], width=8, className='mt-1', style={'width': '100%', 'height': '60vh', 'margin': "auto", "display": "block", "position": "relative"}),
+    ]),
+    dbc.Row([
+        dbc.Col([
+            #html.Div([
+                dbc.Label("Cross Section"),
+                dcc.Graph(id="time-graph", figure=cross_fig),
+            #]),
+        ], width=2),
+        dbc.Col([
+            #html.Div([
+                dbc.Label("Terrain Model"),
+                dcc.Graph(id="3d-graph", figure=terrain_fig),
+            #]),
+        ], width=2),
+        dbc.Col([
+            dbc.Label("Table data (placeholder)"),
+            table
+        ], width=8),
+    ]),
+], fluid=True)
 
 # Geojson polygon clicking callback disabled
 """
@@ -162,10 +201,11 @@ def terrain_3d(geojson, threshold):
     terrain[terrain==-9999] = np.nan
     water_level = np.ones(terrain.shape)*threshold
 
-    fig = go.Figure(data=[go.Surface(z=terrain), go.Surface(z=water_level)])
+    fig = go.Figure(data=[go.Surface(z=terrain), go.Surface(z=water_level, colorscale="ice")])
     fig.update_layout(title='3D Model', autosize=False,
-                  width=500, height=500,
-                  margin=dict(l=65, r=50, b=65, t=90))
+                  width=300, height=300,
+                  margin=dict(l=5, r=5, b=5, t=5))
+    fig.update_traces(showscale=False)
     
     return fig
 
@@ -193,10 +233,11 @@ def water_request(geojson, threshold):
 
     water_level = np.ones(terrain.shape)*threshold
 
-    fig = go.Figure(data=[go.Surface(z=terrain), go.Surface(z=water_level)])
+    fig = go.Figure(data=[go.Surface(z=terrain), go.Surface(z=water_level, colorscale="ice")])
     fig.update_layout(title='Cross-section', autosize=False,
-                  width=500, height=500,
-                  margin=dict(l=65, r=50, b=65, t=90))
+                  width=300, height=300,
+                  margin=dict(l=5, r=5, b=5, t=5))
+    fig.update_traces(showscale=False)
     
     return fig
 
