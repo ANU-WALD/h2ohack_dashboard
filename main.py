@@ -40,13 +40,14 @@ terrain_fig = go.Figure(data=[go.Surface(z=np.ones((400,400)))])
 terrain_fig.update_layout(autosize=False, width=300, height=300, margin=dict(l=5, r=5, b=5, t=5))
 terrain_fig.update_traces(showscale=False)
 
+s2016 = "https://gist.githubusercontent.com/prl900/063dfa2a139c270ce74875b9c76b6067/raw/12f65e55c6cf5e4fe992fe96f4f319044dabdbbf/gistfile1.txt"
+df2016 = pd.read_csv(s2016, index_col=0, parse_dates=True)
+df2016.columns = ['Drought Idx', 'Cat', 'Prec (mm)', 'Max Temp', 'Soil Moisture', 'ET']
+
 table = dash_table.DataTable(
     id='table',
-    columns=[{"name": i, "id": i} for i in df.columns],
-    data=df.to_dict('records'),
-    page_action="native",
-    page_current= 0,
-    page_size= 10,
+    columns=[{"name": i, "id": i} for i in df2016.columns],
+    data=df2016.to_dict('records'),
 )
 
 # Subcatchment polygons disabled
@@ -78,45 +79,61 @@ app = dash.Dash(external_stylesheets=[dbc.themes.FLATLY])
 # Terrain layer disabled (using satellite baselayer instead)
 #dem = dl.WMSTileLayer(id= 'dem-wms', url="https://h2ohack-mtmenipwta-ts.a.run.app/wms", layers="ELVIS_UTM", format="image/png", extraProps=dict(time="2021-01-01T00:00:00.000Z"), transparent=True)
 #flood = dl.WMSTileLayer(id= 'flood-wms', url="https://h2ohack-mtmenipwta-ts.a.run.app/wms", layers="Flood", format="image/png", extraProps=dict(time="2021-01-01T00:00:00.000Z", threshold=100), transparent=True)
-flood = dl.WMSTileLayer(id= 'flood-wms', url="https://h2ohack-mtmenipwta-ts.a.run.app/wms", layers="FloodViridis", format="image/png", extraProps=dict(time="2021-01-01T00:00:00.000Z", threshold=100), transparent=True)
-
 
 app.layout = dbc.Container([
     dbc.Row([
-        dbc.Col(html.H1('OzRiver H2OHack - Interactive Water Trading Dashboard', style={'marginTop': 35}), width=11),
-        dbc.Col(html.Div(html.Img(src=app.get_asset_url('floodplain.png'), style={'height':'100%','width':'100%', 'marginTop': 10})), width=1)
+        dbc.Col(html.H1('OzRiver H2OHack - Interactive Water Trading Dashboard', style={'marginTop': 35}), width=10),
+        dbc.Col(html.Div(html.Img(src=app.get_asset_url('floodplain.png'), style={'height':'100%','width':'100%', 'marginTop': 20})), width=2)
     ]),
     dbc.Row([
         dbc.Col([
             dbc.Label("Drought Period"),
-            dcc.Slider(id="sld_drought", min=1960, max=2021, value=2020, marks={
-                    1960: {'label': '1960'},
-                    1970: {'label': '1970'},
-                    1980: {'label': '1980'},
-                    1990: {'label': '1990'},
-                    2000: {'label': '2000'},
-                    2010: {'label': '2010'},
+            dcc.Slider(id="sld_year", min=2016, max=2020, value=2020, marks={
+                    2016: {'label': '2016'},
+                    2017: {'label': '2017'},
+                    2018: {'label': '2018'},
+                    2019: {'label': '2019'},
                     2020: {'label': '2020'},
+                },
+                included=False
+            ),
+            dcc.Slider(id="sld_month", min=1, max=12, value=12, marks={
+                    1: {'label': 'Jan'},
+                    2: {'label': 'Feb'},
+                    3: {'label': 'Mar'},
+                    4: {'label': 'Apr'},
+                    5: {'label': 'May'},
+                    6: {'label': 'Jun'},
+                    7: {'label': 'Jul'},
+                    8: {'label': 'Aug'},
+                    9: {'label': 'Sep'},
+                    10: {'label': 'Oct'},
+                    11: {'label': 'Nov'},
+                    12: {'label': 'Dec'},
                 },
                 included=False
             ),
             dbc.Label("Historical Drought"),
             dcc.Graph(id="drought-fig", figure=drought_fig, style={'height': '35vh'}, config={'displayModeBar': False}),
             dbc.Label("Inundation Level"),
-            dcc.Slider(id="sld_height", min=100, max=120, value=100, marks={
+            dcc.Slider(id="sld_height", min=100, max=120, value=110, marks={
                                 100: {'label': '100'},
-                                100: {'label': '105'},
+                                105: {'label': '105'},
                                 110: {'label': '110'},
-                                110: {'label': '115'},
+                                115: {'label': '115'},
                                 120: {'label': '120'}}, included=False),
         ], width=4),
         dbc.Col([
             dl.Map(children=[
-                    dl.TileLayer(url=hires_url), 
+                    dl.LayersControl([
+                        dl.BaseLayer(dl.TileLayer(), name="map", checked=False),
+                        dl.BaseLayer(dl.TileLayer(url=hires_url), name="satellite", checked=True),
+                        dl.Overlay(dl.WMSTileLayer(id= 'flood-wms', url="https://h2ohack-mtmenipwta-ts.a.run.app/wms", layers="FloodViridis", format="image/png", extraProps=dict(time="2021-01-01T00:00:00.000Z", threshold=110), transparent=True), name='Flooding Map', checked=True),
+                        dl.Overlay(dl.WMSTileLayer(id= 'aet-wms', url="https://h2ohack-mtmenipwta-ts.a.run.app/wms", layers="AET", format="image/png", extraProps=dict(time="2020-12-01T00:00:00.000Z"), transparent=True), name='Evapotranspiration', checked=False),
+                    ], position='bottomleft'),
                     dl.FeatureGroup([
                         dl.EditControl(id="edit_control", draw=dict(circle=False, circlemarker=False))
                     ]), 
-                    flood, 
                     info
             ], center=[-30.0,146.4], zoom=10),
         ], width=8, className='mt-1', style={'width': '100%', 'height': '60vh', 'margin': "auto", "display": "block", "position": "relative"}),
@@ -135,9 +152,13 @@ app.layout = dbc.Container([
             #]),
         ], width=2),
         dbc.Col([
-            dbc.Label("Table data (placeholder)"),
+            dbc.Label("Historical Water Usage"),
+            dcc.Loading(dcc.Graph(id="wu-graph", figure=px.line())),
+        ], width=4),
+        dbc.Col([
+            dbc.Label("2016 Summary"),
             table
-        ], width=8),
+        ], width=4),
     ]),
 ], fluid=True)
 
@@ -163,6 +184,13 @@ def info_click(height):
     return dict(threshold=height)
 
 # This displays flooded area and volume in the map's info panel
+@app.callback(Output("aet-wms", 'extraProps'), Input("sld_year", "value"), Input("sld_month", "value"))
+def aet_wms(year, month):
+
+    return dict(time=f"{year}-{month:02d}-01T00:00:00.000Z")
+
+
+# This displays flooded area and volume in the map's info panel
 @app.callback(Output("info", "children"), Input("edit_control", "geojson"), Input("sld_height", "value"))
 def water_request(geojson, threshold):
 
@@ -180,6 +208,25 @@ def water_request(geojson, threshold):
 
 
 # This displays flooded area and volume in the map's info panel
+@app.callback(Output("wu-graph", "figure"), Input("edit_control", "geojson"))
+def water_usage_request(geojson):
+
+    if geojson and len(geojson['features']) > 0:
+        data = json.dumps({"product": "WaterUsage", "feature": geojson['features'][-1]})
+        req =  request.Request("https://h2ohack-mtmenipwta-ts.a.run.app/wps", data=data.encode())
+        req.add_header('Content-Type', 'application/json; charset=utf-8')
+        resp = request.urlopen(req)
+
+        df = pd.read_csv(resp, parse_dates=[0], index_col=0, header=0)
+
+        fig = px.line(df, y="volume")
+        fig.update_layout(margin=dict(t=5,r=5,l=5,b=5))
+
+        return fig
+
+    return px.line()
+
+# This displays flooded area and volume in the map's info panel
 @app.callback(Output("3d-graph", "figure"), Input("edit_control", "geojson"), Input("sld_height", "value"))
 def terrain_3d(geojson, threshold):
     
@@ -189,10 +236,10 @@ def terrain_3d(geojson, threshold):
     if len(geojson['features']) == 0:
         raise PreventUpdate
    
-    if geojson['features'][0]['geometry']['type'] != 'Polygon':
+    if geojson['features'][-1]['geometry']['type'] != 'Polygon':
         raise PreventUpdate
     
-    data = json.dumps({"product": "ELVIS_UTM", "feature": geojson['features'][0]})
+    data = json.dumps({"product": "ELVIS_UTM", "feature": geojson['features'][-1]})
     req =  request.Request("https://h2ohack-mtmenipwta-ts.a.run.app/wcs", data=data.encode())
     req.add_header('Content-Type', 'application/json; charset=utf-8')
     resp = request.urlopen(req)
@@ -201,7 +248,7 @@ def terrain_3d(geojson, threshold):
     terrain[terrain==-9999] = np.nan
     water_level = np.ones(terrain.shape)*threshold
 
-    fig = go.Figure(data=[go.Surface(z=terrain), go.Surface(z=water_level, colorscale="ice")])
+    fig = go.Figure(data=[go.Surface(z=terrain, colorscale="haline"), go.Surface(z=water_level, colorscale="ice")])
     fig.update_layout(title='3D Model', autosize=False,
                   width=300, height=300,
                   margin=dict(l=5, r=5, b=5, t=5))
