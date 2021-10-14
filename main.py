@@ -249,8 +249,7 @@ def terrain_3d(geojson, threshold):
     water_level = np.ones(terrain.shape)*threshold
 
     fig = go.Figure(data=[go.Surface(z=terrain, colorscale="haline"), go.Surface(z=water_level, colorscale="ice")])
-    fig.update_layout(title='3D Model', autosize=False,
-                  width=300, height=300,
+    fig.update_layout(autosize=False, width=300, height=300,
                   margin=dict(l=5, r=5, b=5, t=5))
     fig.update_traces(showscale=False)
     
@@ -281,8 +280,7 @@ def water_request(geojson, threshold):
     water_level = np.ones(terrain.shape)*threshold
 
     fig = go.Figure(data=[go.Surface(z=terrain), go.Surface(z=water_level, colorscale="ice")])
-    fig.update_layout(title='Cross-section', autosize=False,
-                  width=300, height=300,
+    fig.update_layout(autosize=False, width=300, height=300,
                   margin=dict(l=5, r=5, b=5, t=5))
     fig.update_traces(showscale=False)
     
