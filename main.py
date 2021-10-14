@@ -87,7 +87,7 @@ app.layout = dbc.Container([
     ]),
     dbc.Row([
         dbc.Col([
-            dbc.Label("Drought Period"),
+            dbc.Label("Drought Period", size='lg'),
             dcc.Slider(id="sld_year", min=2016, max=2020, value=2020, marks={
                     2016: {'label': '2016'},
                     2017: {'label': '2017'},
@@ -113,9 +113,9 @@ app.layout = dbc.Container([
                 },
                 included=False
             ),
-            dbc.Label("Historical Drought"),
+            dbc.Label("Historical Drought", size='lg'),
             dcc.Graph(id="drought-fig", figure=drought_fig, style={'height': '35vh'}, config={'displayModeBar': False}),
-            dbc.Label("Inundation Level"),
+            dbc.Label("Inundation Level", size='lg'),
             dcc.Slider(id="sld_height", min=100, max=120, value=110, marks={
                                 100: {'label': '100'},
                                 105: {'label': '105'},
@@ -136,27 +136,27 @@ app.layout = dbc.Container([
                     ]), 
                     info
             ], center=[-30.0,146.4], zoom=10),
-        ], width=8, className='mt-1', style={'width': '100%', 'height': '60vh', 'margin': "auto", "display": "block", "position": "relative"}),
+        ], width=8, className='mt-1', style={'width': '100%', 'height': '65vh', 'margin': "auto", "display": "block", "position": "relative"}),
     ]),
     dbc.Row([
         dbc.Col([
             #html.Div([
-                dbc.Label("Cross Section"),
+                dbc.Label("Cross Section", size='lg'),
                 dcc.Graph(id="time-graph", figure=cross_fig),
             #]),
         ], width=2),
         dbc.Col([
             #html.Div([
-                dbc.Label("Terrain Model"),
+                dbc.Label("Terrain Model", size='lg'),
                 dcc.Graph(id="3d-graph", figure=terrain_fig),
             #]),
         ], width=2),
         dbc.Col([
-            dbc.Label("Historical Water Usage"),
+            dbc.Label("Historical Water Usage", size='lg'),
             dcc.Loading(dcc.Graph(id="wu-graph", figure=px.line())),
         ], width=4),
         dbc.Col([
-            dbc.Label("2016 Summary"),
+            dbc.Label("2016 Summary", size='lg'),
             table
         ], width=4),
     ]),
